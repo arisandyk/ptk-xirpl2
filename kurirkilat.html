@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kurir Kilat — Status Master</title>
+<style>
+  :root{
+    --bg: #0d1524;
+    --bg2: #131d33;
+    --panel: #182342;
+    --blue: #3b82f6;
+    --blue-dim: #24467a;
+    --amber: #fb923c;
+    --amber-dim: #b96a28;
+    --text: #e8edf7;
+    --text-dim: #93a2c2;
+    --danger: #ff6b6b;
+    --ok: #6bffb0;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background: radial-gradient(circle at 50% -10%, #1c2c52 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 24px;
+  }
+  .stage{ width:100%; max-width: 760px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; animation: fadeIn .4s ease; }
+  @media (prefers-reduced-motion: reduce){ .screen.active{ animation:none; } }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .eyebrow{ font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); margin: 0 0 8px; }
+  h1{ font-family: var(--mono); font-size: 28px; margin: 0 0 12px; line-height:1.25; }
+  h2{ font-family: var(--mono); font-size: 20px; margin: 0 0 14px; }
+  p{ line-height:1.6; color: var(--text-dim); margin: 0 0 16px; }
+  strong{ color: var(--text); }
+
+  .card{ background: var(--panel); border: 1px solid #2a3a63; border-radius: 16px; padding: 28px; }
+
+  .dial-wrap{ display:flex; justify-content:center; margin-bottom: 22px; }
+  .dial{ width: 132px; height:132px; }
+  .dial-seg{ fill:none; stroke-width: 10; stroke-linecap: round; transition: stroke .5s ease; }
+  @media (prefers-reduced-motion: reduce){ .dial-seg{ transition:none; } }
+  .dial-center{ font-family: var(--mono); font-size: 22px; fill: var(--text); }
+  .dial-label{ font-family: var(--mono); font-size: 9px; fill: var(--text-dim); }
+
+  label{ display:block; font-size:13px; color: var(--text-dim); margin-bottom:6px; font-family: var(--mono); }
+  input[type=text]{ width:100%; padding:12px 14px; margin-bottom:16px; background: var(--bg2); border:1px solid #2a3a63; border-radius:10px; color: var(--text); font-size:15px; font-family: var(--sans); }
+  input[type=text]:focus{ outline: 2px solid var(--amber); outline-offset:1px; }
+
+  button{ font-family: var(--sans); font-size:15px; font-weight:600; border-radius: 10px; border: none; padding: 13px 22px; cursor:pointer; transition: transform .15s ease, background .2s ease; }
+  button:focus-visible{ outline: 2px solid var(--amber); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ button{ transition:none; } }
+  .btn-primary{ background: var(--amber); color:#2a1400; }
+  .btn-primary:hover{ background:#ffab5e; }
+  .btn-primary:disabled{ background:#5c4a2a; color:#8a7a5c; cursor:not-allowed; }
+  .btn-ghost{ background: transparent; color: var(--text-dim); border:1px solid #2a3a63; }
+  .btn-ghost:hover{ color: var(--text); border-color: var(--blue); }
+  .btn-row{ display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+
+  .badge{ display:inline-block; font-family: var(--mono); font-size:11px; padding:4px 10px; border-radius:999px; letter-spacing:.05em; background: var(--blue-dim); color:#dce8ff; margin-bottom:14px; }
+  .hud{ display:flex; justify-content:space-between; align-items:center; font-family: var(--mono); font-size:13px; color: var(--text-dim); margin-bottom: 18px; padding-bottom:14px; border-bottom:1px solid #2a3a63; }
+  .hud .score{ color: var(--amber); font-weight:600; }
+
+  .story{ font-style:italic; color:var(--text-dim); border-left:3px solid var(--blue); padding-left:14px; margin-bottom:20px; white-space:pre-line; }
+
+  .code-block{ background:#080c16; border:1px solid #2a3a63; border-radius:10px; padding:16px; font-family: var(--mono); font-size:13.5px; line-height:1.6; color:#c7d3ee; white-space:pre-wrap; margin-bottom:18px; overflow-x:auto; }
+  .code-block select{ font-family: var(--mono); font-size:13.5px; background:#1c2947; color: var(--amber); border:1px solid var(--amber-dim); border-radius:6px; padding:2px 6px; margin:0 2px; }
+
+  .opt-list{ display:flex; flex-direction:column; gap:10px; margin-bottom: 8px; }
+  .opt{ text-align:left; background: var(--bg2); color: var(--text); border:1px solid #2a3a63; border-radius:10px; padding:14px 16px; font-family: var(--sans); font-size:14.5px; cursor:pointer; }
+  .opt code{ font-family: var(--mono); font-size:13px; }
+  .opt:hover{ border-color: var(--blue); }
+  .opt.correct{ border-color: var(--ok); background: rgba(107,255,176,0.08); }
+  .opt.wrong{ border-color: var(--danger); background: rgba(255,107,107,0.08); }
+  .opt:disabled{ cursor:default; }
+
+  .feedback{ font-size:14px; margin: 10px 0 4px; min-height:20px; }
+  .feedback.ok{ color: var(--ok); }
+  .feedback.bad{ color: var(--danger); }
+  .feedback.hint{ color: var(--amber); }
+
+  .final-badge{ text-align:center; font-family: var(--mono); font-size:15px; padding:16px; border-radius:12px; margin:18px 0; border:1px solid #2a3a63; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
+  th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid #2a3a63; }
+  th{ color: var(--text-dim); font-family: var(--mono); font-weight:500; }
+
+  .teacher-link{ text-align:center; margin-top:20px; }
+  .teacher-link a{ color:#465578; font-size:12px; text-decoration:none; }
+  .teacher-link a:hover{ color: var(--text-dim); }
+
+  footer.note{ text-align:center; color:#3a4870; font-size:11px; margin-top:18px; font-family: var(--mono); }
+
+  .builder{ background:#111c36; border:1px solid #2a3a63; border-radius:12px; padding:16px; margin-bottom:16px; }
+  .branch-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0; font-size:14px; }
+  .branch-row + .branch-row{ border-top:1px dashed #2a3a63; }
+  .branch-row select, .branch-row input{ background:#1c2947; color:var(--text); border:1px solid #2a3a63; border-radius:7px; padding:6px 8px; font-family: var(--mono); font-size:13px; }
+  .branch-row input[type=number]{ width:80px; }
+  .branch-row .b-out{ color: var(--amber); border-color: var(--amber-dim); }
+  .else-row{ color: var(--text-dim); font-style:italic; }
+  .test-row{ display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-radius:8px; margin-bottom:6px; font-size:13px; font-family: var(--mono); }
+  .test-row.pass{ background:rgba(107,255,176,0.08); border:1px solid rgba(107,255,176,0.3); }
+  .test-row.fail{ background:rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.3); }
+  .test-row .ticon{ font-size:15px; }
+  .test-row.pass .ticon{ color:var(--ok); }
+  .test-row.fail .ticon{ color:var(--danger); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- SCREEN: INTRO -->
+  <section id="scr-intro" class="screen active">
+    <div class="card">
+      <p class="eyebrow">Discovery Learning · Struktur "when" pada Kotlin</p>
+      <h1>🚚 Kurir Kilat</h1>
+      <p class="story">Kamu baru gabung sebagai developer di aplikasi kurir "Kurir Kilat". Ada 4 tiket kerja dari lead developer — semuanya butuh struktur `when` buat ngatur status, prioritas, dan notifikasi pengiriman. Nggak ada yang bakal kasih tahu jawabannya langsung — kamu yang harus merakit dan menguji sendiri. Siap?</p>
+      <label for="inp-nama">Nama lengkap</label>
+      <input type="text" id="inp-nama" placeholder="Tulis namamu">
+      <label for="inp-absen">Nomor absen</label>
+      <input type="text" id="inp-absen" placeholder="Contoh: 14">
+      <div class="feedback bad" id="intro-err"></div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="startGame()">Mulai &rarr;</button>
+      </div>
+    </div>
+    <div class="teacher-link"><a href="#" onclick="openTeacher();return false;">Panel guru</a></div>
+    <footer class="note">PTK Discovery Learning · Kemandirian Belajar · XI RPL 2 · SMK Negeri 13 Bandung · Siklus II</footer>
+  </section>
+
+  <!-- SCREEN: GAME -->
+  <section id="scr-game" class="screen">
+    <div class="dial-wrap">
+      <svg class="dial" viewBox="0 0 132 132">
+        <circle cx="66" cy="66" r="54" fill="none" stroke="#1c2947" stroke-width="10"/>
+        <path id="seg1" class="dial-seg" stroke="var(--blue-dim)" d="M66 12 A54 54 0 0 1 118.4 51"/>
+        <path id="seg2" class="dial-seg" stroke="var(--blue-dim)" d="M118.4 51 A54 54 0 0 1 101 111"/>
+        <path id="seg3" class="dial-seg" stroke="var(--blue-dim)" d="M101 111 A54 54 0 0 1 31 111"/>
+        <path id="seg4" class="dial-seg" stroke="var(--blue-dim)" d="M31 111 A54 54 0 0 1 13.6 51"/>
+        <text x="66" y="62" text-anchor="middle" class="dial-center" id="dial-count">0/4</text>
+        <text x="66" y="78" text-anchor="middle" class="dial-label">TIKET SELESAI</text>
+      </svg>
+    </div>
+    <div class="card">
+      <div class="hud">
+        <span id="hud-nama">-</span>
+        <span class="score">Skor: <span id="hud-score">400</span></span>
+      </div>
+      <div id="door-content"></div>
+    </div>
+  </section>
+
+  <!-- SCREEN: FINISH -->
+  <section id="scr-finish" class="screen">
+    <div class="card" style="text-align:center;">
+      <p class="eyebrow">Rilis berhasil</p>
+      <h1>🎉 Semua Tiket Selesai</h1>
+      <p id="finish-name" style="color:var(--text);font-size:16px;"></p>
+      <div class="final-badge" id="finish-badge"></div>
+      <table>
+        <thead><tr><th>Tiket</th><th>Ranah</th><th>Petunjuk</th><th>Uji coba</th></tr></thead>
+        <tbody id="finish-table"></tbody>
+      </table>
+      <p class="story" style="text-align:left;margin-top:18px;">Kerja bagus! Struktur `when` yang kamu pakai hari ini — baik yang dengan argumen (mencocokkan kategori) maupun tanpa argumen (mirip if-else bertingkat) — bakal terus kepake di project Android kalian ke depannya, termasuk buat nentuin tampilan di Jetpack Compose.</p>
+      <p style="margin-top:18px;font-size:13px;">📥 File hasilmu otomatis ke-download (cek folder <strong>Downloads</strong>). Kirim/kumpulkan file itu ke gurumu ya — lewat USB atau grup WA kelas.</p>
+    </div>
+    <footer class="note">Hasil diunduh langsung dari browser — tidak butuh koneksi internet</footer>
+  </section>
+
+  <!-- SCREEN: TEACHER PANEL -->
+  <section id="scr-teacher" class="screen">
+    <div class="card">
+      <h2>Panel guru</h2>
+      <p>Rekap tambahan (bonus) dari komputer ini — tidak semua browser mendukung ini. Sumber data utama tetap file CSV yang otomatis terunduh di layar akhir tiap siswa.</p>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="downloadCSV()">Unduh CSV</button>
+        <button class="btn-ghost" onclick="closeTeacher()">Kembali</button>
+        <button class="btn-ghost" onclick="clearData()" style="color:var(--danger);border-color:var(--danger);">Hapus semua data</button>
+      </div>
+      <table id="teacher-table" style="margin-top:20px;">
+        <thead><tr><th>Nama</th><th>Absen</th><th>Skor</th><th>Predikat kemandirian</th><th>Waktu</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'kurirKilatWhen_hasil_v1';
+
+const state = {
+  nama:'', absen:'',
+  score:400,
+  doorsSolved:0,
+  d1:{hints:0, idx:0, correct:[false,false,false]},
+  d2:{hints:0, correct:false, testRuns:0},
+  d3:{hints:0, correct:false, testRuns:0},
+  d4:{hints:0, correct:false, testRuns:0},
+};
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame(){
+  const nama = document.getElementById('inp-nama').value.trim();
+  const absen = document.getElementById('inp-absen').value.trim();
+  if(!nama || !absen){
+    document.getElementById('intro-err').textContent = 'Isi nama dan nomor absen dulu, ya.';
+    return;
+  }
+  document.getElementById('intro-err').textContent = '';
+  state.nama = nama; state.absen = absen;
+  document.getElementById('hud-nama').textContent = nama + ' · No. ' + absen;
+  show('scr-game');
+  renderDoor1();
+}
+
+function updateHUD(){
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('dial-count').textContent = state.doorsSolved + '/4';
+}
+function markDialSolved(n){
+  const el = document.getElementById('seg'+n);
+  if(el) el.setAttribute('stroke','var(--amber)');
+  state.doorsSolved++;
+  updateHUD();
+}
+
+/* ---------- generic single-choice renderer (Tiket 1) ---------- */
+function renderChoiceQuestion(cfg){
+  let attempts = 0;
+  const container = document.getElementById('door-content');
+  container.innerHTML = `
+    <span class="badge">${cfg.badge}</span>
+    <h2>${cfg.title}</h2>
+    ${cfg.storyHtml || ''}
+    ${cfg.questionHtml || ''}
+    <div class="opt-list" id="opt-list"></div>
+    <div class="feedback" id="q-feedback"></div>
+    <div class="btn-row">
+      <button class="btn-ghost" id="hint-btn" onclick="useHintGeneric()">💡 Minta petunjuk</button>
+    </div>
+  `;
+  const list = document.getElementById('opt-list');
+  cfg.options.forEach((opt,i)=>{
+    const b = document.createElement('button');
+    b.className='opt';
+    b.innerHTML = opt;
+    b.onclick = ()=>answerGeneric(i);
+    list.appendChild(b);
+  });
+
+  window.answerGeneric = function(i){
+    const buttons = list.querySelectorAll('.opt');
+    if(i === cfg.correctIndex){
+      buttons[i].classList.add('correct');
+      buttons.forEach(b=>b.disabled=true);
+      document.getElementById('q-feedback').className='feedback ok';
+      document.getElementById('q-feedback').textContent = '✔ Tepat!';
+      document.getElementById('hint-btn').disabled = true;
+      setTimeout(()=>cfg.onResolved(true, attempts), 700);
+    } else {
+      attempts++;
+      buttons[i].classList.add('wrong');
+      buttons[i].disabled = true;
+      if(attempts >= 2){
+        buttons.forEach(b=>b.disabled=true);
+        buttons[cfg.correctIndex].classList.add('correct');
+        document.getElementById('q-feedback').className='feedback bad';
+        document.getElementById('q-feedback').textContent = 'Belum tepat. Jawaban benar sudah ditandai — yuk lanjut.';
+        setTimeout(()=>cfg.onResolved(false, attempts), 1100);
+      } else {
+        document.getElementById('q-feedback').className='feedback bad';
+        document.getElementById('q-feedback').textContent = 'Belum tepat, coba sekali lagi.';
+      }
+    }
+  };
+
+  window.useHintGeneric = function(){
+    cfg.attemptsState.hints++;
+    state.score = Math.max(0, state.score - 20);
+    updateHUD();
+    document.getElementById('q-feedback').className='feedback hint';
+    document.getElementById('q-feedback').textContent = '💡 ' + cfg.hintText;
+    document.getElementById('hint-btn').disabled = true;
+  };
+}
+
+/* ---------- TIKET 1 (C2 - Memahami) ---------- */
+const d1Questions = [
+  {
+    story:'',
+    q:'Kamu ingin mengecek nilai sebuah variabel terhadap beberapa kemungkinan nilai spesifik (misalnya status: "Diproses", "Dikirim", "Sampai"). Struktur mana yang paling ringkas dipakai?',
+    options:['if-else bertingkat satu per satu','<code>when</code> dengan argumen','Perulangan for','try-catch'],
+    correct:1,
+    hint:'Ingat, when itu dirancang khusus buat mencocokkan satu nilai ke beberapa kemungkinan sekaligus.'
+  },
+  {
+    story:`<div class="code-block">when (status) {
+    "Diproses" -&gt; "Sedang diproses"
+    "Dikirim" -&gt; "Dalam perjalanan"
+    else -&gt; "Status tidak dikenali"
+}</div>`,
+    q:'Kapan blok <code>else</code> di atas akan dijalankan?',
+    options:['Selalu dijalankan pertama kali','Saat status tidak cocok dengan kondisi mana pun di atasnya','Saat status kosong saja','when tidak boleh punya else'],
+    correct:1,
+    hint:'Coba pikirkan: kalau status-nya "Dibatalkan", nggak ada baris yang cocok kan? Nah, ke mana dia lari?'
+  },
+  {
+    story:'',
+    q:'Apa yang membedakan <code>when</code> TANPA argumen dari <code>when</code> DENGAN argumen?',
+    options:['when tanpa argumen tidak boleh punya else','Tiap cabang pada when tanpa argumen berisi kondisi boolean sendiri, bukan mencocokkan satu nilai','Keduanya sebenarnya identik','when tanpa argumen cuma untuk angka'],
+    correct:1,
+    hint:'Bayangin: kalau nggak ada argumen di dalam kurung when(...), gimana caranya tiap baris tahu apa yang mau dicek?'
+  }
+];
+
+function renderDoor1(){
+  const i = state.d1.idx;
+  if(i >= d1Questions.length){
+    markDialSolved(1);
+    renderDoor2();
+    return;
+  }
+  const qd = d1Questions[i];
+  renderChoiceQuestion({
+    badge: 'TIKET 1 · C2 — Memahami (' + (i+1) + '/3)',
+    title: 'Briefing Awal',
+    storyHtml: qd.story,
+    questionHtml: '<p>' + qd.q + '</p>',
+    options: qd.options,
+    correctIndex: qd.correct,
+    hintText: qd.hint,
+    attemptsState: state.d1,
+    onResolved: (correct)=>{
+      state.d1.correct[i] = correct;
+      if(!correct) state.score = Math.max(0, state.score - 10);
+      state.d1.idx++;
+      renderDoor1();
+    }
+  });
+}
+
+/* ---------- Shared engine: string-match evaluator (for "when" WITH argument) ---------- */
+function evalStringMatch(branches, elseOut, inputStr){
+  for(const b of branches){ if(b.match === inputStr) return b.output; }
+  return elseOut;
+}
+/* ---------- Shared engine: numeric-threshold evaluator (for "when" WITHOUT argument) ---------- */
+function compareOp(x, op, v){
+  switch(op){ case 'lt': return x<v; case 'lte': return x<=v; case 'gt': return x>v; case 'gte': return x>=v; case 'eq': return x===v; default: return false; }
+}
+function opLabel(op){ return {'lt':'&lt;','lte':'&le;','gt':'&gt;','gte':'&ge;','eq':'=='}[op] || '?'; }
+function evalSingleVar(branches, elseOut, x){
+  for(const b of branches){ if(compareOp(x, b.op, b.val)) return b.out; }
+  return elseOut;
+}
+function readBranchRow(rowEl){
+  const op = rowEl.querySelector('.b-op').value;
+  const val = parseFloat(rowEl.querySelector('.b-val').value);
+  const out = rowEl.querySelector('.b-out').value;
+  return { op, val, out };
+}
+function branchValid(b){ return b.op && !isNaN(b.val) && b.out; }
+function renderTestResults(containerEl, results){
+  containerEl.innerHTML = results.map(r=>
+    `<div class="test-row ${r.pass?'pass':'fail'}"><span>${r.label}</span><span>Hasil kamu: <strong>${r.actual}</strong></span><span class="ticon">${r.pass?'&#10003;':'&#10007;'}</span></div>`
+  ).join('');
+}
+
+/* ---------- TIKET 2 (C3 - Menerapkan): Badge Status — when DENGAN argumen ---------- */
+function renderDoor2(){
+  const statuses = ['Diproses','Dikirim','Sampai','Dibatalkan'];
+  const outputs = ['Abu-abu','Biru','Hijau','Merah','Status Tidak Dikenali'];
+  const matchOpts = (sel)=> '<option value="">status?</option>' + statuses.map(s=>`<option value="${s}" ${s===sel?'selected':''}>${s}</option>`).join('');
+  const outOpts = (sel)=> '<option value="">warna?</option>' + outputs.map(o=>`<option value="${o}" ${o===sel?'selected':''}>${o}</option>`).join('');
+
+  const container = document.getElementById('door-content');
+  container.innerHTML = `
+    <span class="badge">TIKET 2 &middot; C3 — Menerapkan</span>
+    <h2>Badge Status Paket</h2>
+    <p class="story">Aplikasi Kurir Kilat butuh badge warna buat tiap status paket:
+- Diproses &rarr; Abu-abu
+- Dikirim &rarr; Biru
+- Sampai &rarr; Hijau
+- Dibatalkan &rarr; Merah
+- Status lain (di luar 4 itu) &rarr; tampilkan "Status Tidak Dikenali"</p>
+    <p>Rakit sendiri pencocokannya pakai <code>when</code> dengan argumen, lalu jalankan uji coba untuk memastikan hasilnya benar — termasuk untuk status yang nggak terduga.</p>
+    <div class="builder">
+      <div class="branch-row"><span>"status" ==</span><select class="b-match">${matchOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row"><span>"status" ==</span><select class="b-match">${matchOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row"><span>"status" ==</span><select class="b-match">${matchOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row"><span>"status" ==</span><select class="b-match">${matchOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row else-row"><span>else</span><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="runDoor2()">&#9654; Jalankan uji coba</button>
+      <button class="btn-ghost" id="hint-btn" onclick="hintDoor2()">💡 Minta petunjuk</button>
+    </div>
+    <div id="test-results"></div>
+    <div class="feedback" id="q-feedback"></div>
+  `;
+
+  window.hintDoor2 = function(){
+    state.d2.hints++;
+    state.score = Math.max(0, state.score-20);
+    updateHUD();
+    document.getElementById('q-feedback').className='feedback hint';
+    document.getElementById('q-feedback').textContent = '💡 Jangan lupa, ada 4 status yang disebutkan + 1 baris else buat status di luar itu (misalnya "Retur"). Total ada 5 baris yang perlu diisi.';
+    document.getElementById('hint-btn').disabled = true;
+  };
+
+  window.runDoor2 = function(){
+    state.d2.testRuns++;
+    const rows = container.querySelectorAll('.branch-row');
+    const branches = [0,1,2,3].map(i=>{
+      const r = rows[i];
+      return { match: r.querySelector('.b-match').value, output: r.querySelector('.b-out').value };
+    });
+    const elseOut = rows[4].querySelector('.b-out').value;
+    const fb = document.getElementById('q-feedback');
+    const allFilled = branches.every(b=>b.match && b.output) && elseOut;
+    if(!allFilled){
+      fb.className='feedback bad';
+      fb.textContent = 'Lengkapi dulu semua baris (termasuk else) sebelum menjalankan uji coba.';
+      return;
+    }
+    const testInputs = ['Diproses','Dikirim','Sampai','Dibatalkan','Retur'];
+    const correctMap = {'Diproses':'Abu-abu','Dikirim':'Biru','Sampai':'Hijau','Dibatalkan':'Merah','Retur':'Status Tidak Dikenali'};
+    const results = testInputs.map(s=>{
+      const actual = evalStringMatch(branches, elseOut, s);
+      return {label:`status = "${s}"`, actual: actual||'(kosong)', pass: actual===correctMap[s]};
+    });
+    renderTestResults(document.getElementById('test-results'), results);
+    const allPass = results.every(r=>r.pass);
+    if(allPass){
+      fb.className='feedback ok';
+      fb.innerHTML = '\u2713 Semua uji coba lolos! Tiket selesai.';
+      container.querySelectorAll('button,select,input').forEach(e=>e.disabled=true);
+      markDialSolved(2);
+      setTimeout(renderDoor3, 1100);
+    } else {
+      fb.className='feedback bad';
+      fb.textContent = 'Masih ada yang meleset. Lihat baris merah di atas — mungkin ada status yang belum kamu tangani.';
+    }
+  };
+}
+
+/* ---------- TIKET 3 (C4 - Menganalisis): Bug Prioritas — when TANPA argumen (boss) ---------- */
+function renderDoor3(){
+  const outputs = ['Kilat','Reguler','Ekonomis'];
+  const outOpts = (sel)=> outputs.map(o=>`<option value="${o}" ${o===sel?'selected':''}>${o}</option>`).join('');
+  const opOpts = (sel)=> ['lt','lte','gt','gte','eq'].map(o=>`<option value="${o}" ${o===sel?'selected':''}>${opLabel(o)}</option>`).join('');
+
+  const container = document.getElementById('door-content');
+  container.innerHTML = `
+    <span class="badge">TIKET 3 &middot; C4 — Menganalisis (Boss)</span>
+    <h2>Bug Report: Prioritas Pengiriman</h2>
+    <p class="story">Kode berikut dibuat untuk menentukan prioritas pengiriman berdasarkan jarak (km), tapi lead developer lapor hasilnya sering salah:</p>
+    <div class="code-block">val prioritas = when {
+    jarak &lt; 20 -&gt; "Reguler"
+    jarak &lt; 5 -&gt; "Kilat"
+    else -&gt; "Ekonomis"
+}</div>
+    <p>Jalankan dulu uji cobanya untuk lihat pola kesalahannya, lalu perbaiki langsung di bawah ini (kamu boleh ubah operator, angka, <em>dan</em> hasil tiap baris):</p>
+    <div class="builder">
+      <div class="branch-row"><span>jarak</span><select class="b-op">${opOpts('lt')}</select><input type="number" class="b-val" step="0.1" value="20"><span>&rarr;</span><select class="b-out">${outOpts('Reguler')}</select></div>
+      <div class="branch-row"><span>jarak</span><select class="b-op">${opOpts('lt')}</select><input type="number" class="b-val" step="0.1" value="5"><span>&rarr;</span><select class="b-out">${outOpts('Kilat')}</select></div>
+      <div class="branch-row else-row"><span>else</span><span>&rarr;</span><select class="b-out">${outOpts('Ekonomis')}</select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="runDoor3()">&#9654; Jalankan uji coba</button>
+      <button class="btn-ghost" id="hint-btn" onclick="hintDoor3()">💡 Minta petunjuk</button>
+    </div>
+    <div id="test-results"></div>
+    <div class="feedback" id="q-feedback"></div>
+  `;
+
+  window.hintDoor3 = function(){
+    state.d3.hints++;
+    state.score = Math.max(0, state.score-20);
+    updateHUD();
+    document.getElementById('q-feedback').className='feedback hint';
+    document.getElementById('q-feedback').textContent = '💡 Inget kasus minggu lalu? Coba jalankan uji coba dulu, perhatikan: baris pertama itu jangkauannya seberapa luas? Apakah dia "menangkap" nilai yang harusnya jadi milik baris di bawahnya?';
+    document.getElementById('hint-btn').disabled = true;
+  };
+
+  window.runDoor3 = function(){
+    state.d3.testRuns++;
+    const rows = container.querySelectorAll('.branch-row');
+    const b1=readBranchRow(rows[0]), b2=readBranchRow(rows[1]);
+    const elseOut = rows[2].querySelector('.b-out').value;
+    const fb = document.getElementById('q-feedback');
+    if(![b1,b2].every(branchValid) || !elseOut){
+      fb.className='feedback bad';
+      fb.textContent = 'Lengkapi dulu semua bagian sebelum menjalankan uji coba.';
+      return;
+    }
+    const branches=[b1,b2];
+    const testInputs = [2, 4.9, 10, 19.9, 25];
+    const correctFor = (j)=> j<5?'Kilat' : j<20?'Reguler' : 'Ekonomis';
+    const results = testInputs.map(v=>{
+      const actual = evalSingleVar(branches, elseOut, v);
+      return {label:`jarak = ${v} km`, actual: actual||'(kosong)', pass: actual===correctFor(v)};
+    });
+    renderTestResults(document.getElementById('test-results'), results);
+    const allPass = results.every(r=>r.pass);
+    if(allPass){
+      fb.innerHTML = '\u2713 Semua uji coba lolos! Bug berhasil diperbaiki.';
+      fb.className='feedback ok';
+      container.querySelectorAll('button,select,input').forEach(e=>e.disabled=true);
+      markDialSolved(3);
+      setTimeout(renderDoor4, 1100);
+    } else {
+      fb.className='feedback bad';
+      fb.textContent = 'Masih ada yang meleset. Lihat baris merah, lalu perbaiki urutan/angkanya.';
+    }
+  };
+}
+
+/* ---------- TIKET 4 (P3/P4 - Praktik): Notifikasi Gabungan (status + prioritas) ---------- */
+function renderDoor4(){
+  const outputs = ['Segera Sampai! 🔥','Dalam Perjalanan','Menunggu Update'];
+  const outOpts = ()=> '<option value="">hasil?</option>' + outputs.map(o=>`<option value="${o}">${o}</option>`).join('');
+  const statusOpts = ()=> '<option value="">?</option><option value="Dikirim">Dikirim</option><option value="Diproses">Diproses</option><option value="Sampai">Sampai</option><option value="any">Status apa saja</option>';
+  const prioOpts = ()=> '<option value="">?</option><option value="kilat">Kilat</option><option value="bukan_kilat">Bukan Kilat</option><option value="any">Prioritas apa saja</option>';
+
+  const container = document.getElementById('door-content');
+  container.innerHTML = `
+    <span class="badge">TIKET 4 &middot; P3/P4 — Praktik (Gabungan)</span>
+    <h2>Notifikasi Gabungan</h2>
+    <p class="story">Terakhir! Notifikasi ke pelanggan digabung dari dua data: status DAN prioritas paket.
+- Status "Dikirim" DAN prioritas "Kilat" &rarr; "Segera Sampai! 🔥"
+- Status "Dikirim" tapi prioritas BUKAN "Kilat" &rarr; "Dalam Perjalanan"
+- Selain itu &rarr; "Menunggu Update"</p>
+    <p>Rakit aturannya sendiri, gabungkan syarat status <strong>dan</strong> prioritas di tiap baris:</p>
+    <div class="builder">
+      <div class="branch-row branch-row-2"><span>status:</span><select class="b-status">${statusOpts()}</select><span>DAN prioritas:</span><select class="b-prio">${prioOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row branch-row-2"><span>status:</span><select class="b-status">${statusOpts()}</select><span>DAN prioritas:</span><select class="b-prio">${prioOpts()}</select><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+      <div class="branch-row else-row"><span>Selain itu</span><span>&rarr;</span><select class="b-out">${outOpts()}</select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="runDoor4()">&#9654; Jalankan uji coba</button>
+      <button class="btn-ghost" id="hint-btn" onclick="hintDoor4()">💡 Minta petunjuk</button>
+    </div>
+    <div id="test-results"></div>
+    <div class="feedback" id="q-feedback"></div>
+  `;
+
+  window.hintDoor4 = function(){
+    state.d4.hints++;
+    state.score = Math.max(0, state.score-20);
+    updateHUD();
+    document.getElementById('q-feedback').className='feedback hint';
+    document.getElementById('q-feedback').textContent = '💡 Cek baris yang gagal di hasil uji coba: masalahnya di syarat status-nya, atau di syarat prioritasnya?';
+    document.getElementById('hint-btn').disabled = true;
+  };
+
+  window.runDoor4 = function(){
+    state.d4.testRuns++;
+    const rows = container.querySelectorAll('.branch-row-2');
+    function readRow2(r){ return { statusMatch: r.querySelector('.b-status').value, prioMode: r.querySelector('.b-prio').value, out: r.querySelector('.b-out').value }; }
+    const b1 = readRow2(rows[0]), b2 = readRow2(rows[1]);
+    const elseOut = container.querySelectorAll('.else-row .b-out')[0].value;
+    const fb = document.getElementById('q-feedback');
+    const rowValid = (b)=> b.statusMatch && b.prioMode && b.out;
+    if(!rowValid(b1) || !rowValid(b2) || !elseOut){
+      fb.className='feedback bad';
+      fb.textContent = 'Lengkapi dulu semua bagian sebelum menjalankan uji coba.';
+      return;
+    }
+    function evalCombo(branches, elseOut, statusVal, prioVal){
+      for(const b of branches){
+        const statusOk = b.statusMatch==='any' || b.statusMatch===statusVal;
+        const prioOk = b.prioMode==='any' || (b.prioMode==='kilat' ? prioVal==='Kilat' : prioVal!=='Kilat');
+        if(statusOk && prioOk) return b.out;
+      }
+      return elseOut;
+    }
+    const branches=[b1,b2];
+    const cases = [
+      {status:'Dikirim', prio:'Kilat'}, {status:'Dikirim', prio:'Reguler'},
+      {status:'Dikirim', prio:'Ekonomis'}, {status:'Diproses', prio:'Kilat'},
+      {status:'Sampai', prio:'Kilat'},
+    ];
+    const correctFor = (c)=> c.status==='Dikirim' ? (c.prio==='Kilat'?'Segera Sampai! 🔥':'Dalam Perjalanan') : 'Menunggu Update';
+    const results = cases.map(c=>{
+      const actual = evalCombo(branches, elseOut, c.status, c.prio);
+      return {label:`status=${c.status}, prioritas=${c.prio}`, actual: actual||'(kosong)', pass: actual===correctFor(c)};
+    });
+    renderTestResults(document.getElementById('test-results'), results);
+    const allPass = results.every(r=>r.pass);
+    if(allPass){
+      fb.innerHTML = '\u2713 Semua uji coba lolos! Notifikasi berhasil dirilis.';
+      fb.className='feedback ok';
+      container.querySelectorAll('button,select,input').forEach(e=>e.disabled=true);
+      state.d4.correct = true;
+      markDialSolved(4);
+      setTimeout(finishGame, 900);
+    } else {
+      fb.className='feedback bad';
+      fb.textContent = 'Masih ada yang meleset. Cek baris merah, perbaiki syarat status atau prioritasnya.';
+    }
+  };
+}
+
+/* ---------- FINISH ---------- */
+function totalHints(){ return state.d1.hints + state.d2.hints + state.d3.hints + state.d4.hints; }
+function kemandirianLabel(h){
+  if(h===0) return 'Sangat Baik — Mandiri Penuh';
+  if(h<=2) return 'Baik';
+  if(h<=4) return 'Cukup';
+  return 'Kurang — Masih Perlu Bimbingan';
+}
+
+function finishGame(){
+  const h = totalHints();
+  const label = kemandirianLabel(h);
+  document.getElementById('finish-name').textContent = state.nama + ' · No. ' + state.absen;
+  document.getElementById('finish-badge').innerHTML =
+    'Skor akhir: <strong style="color:var(--amber)">' + state.score + '</strong> &nbsp;·&nbsp; ' +
+    'Total petunjuk dipakai: <strong>' + h + '</strong><br>' +
+    'Predikat kemandirian: <strong>' + label + '</strong>';
+
+  const rows = [
+    ['Tiket 1 — Briefing Awal','C2 (Memahami)', state.d1.hints, '-'],
+    ['Tiket 2 — Badge Status','C3 (Menerapkan)', state.d2.hints, state.d2.testRuns],
+    ['Tiket 3 — Bug Prioritas','C4 (Menganalisis)', state.d3.hints, state.d3.testRuns],
+    ['Tiket 4 — Notifikasi Gabungan','P3/P4 (Praktik)', state.d4.hints, state.d4.testRuns],
+  ];
+  document.getElementById('finish-table').innerHTML =
+    '<tr><th>Tiket</th><th>Ranah</th><th>Petunjuk</th><th>Uji coba</th></tr>' +
+    rows.map(r=> '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('');
+
+  saveResult(h, label);
+  show('scr-finish');
+}
+
+function saveResult(hints, label){
+  const record = {
+    nama: state.nama, absen: state.absen,
+    skor: state.score, totalHint: hints, predikat: label,
+    d1_hint: state.d1.hints, d2_hint: state.d2.hints, d3_hint: state.d3.hints, d4_hint: state.d4.hints,
+    d2_run: state.d2.testRuns, d3_run: state.d3.testRuns, d4_run: state.d4.testRuns,
+    waktu: new Date().toLocaleString('id-ID')
+  };
+  try{
+    const data = loadAll();
+    data.push(record);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }catch(e){ /* silently ignore — auto-download below is the guaranteed record */ }
+  downloadOwnResult(record);
+}
+
+function downloadOwnResult(record){
+  try{
+    const header = ['Nama','Absen','Skor','TotalHint','Predikat','HintTiket1_C2','HintTiket2_C3','HintTiket3_C4','HintTiket4_P3P4','UjiCobaTiket2','UjiCobaTiket3','UjiCobaTiket4','Waktu'];
+    const row = [record.nama, record.absen, record.skor, record.totalHint, record.predikat, record.d1_hint, record.d2_hint, record.d3_hint, record.d4_hint, record.d2_run, record.d3_run, record.d4_run, record.waktu];
+    const csv = header.join(',') + '\n' + row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = (record.nama || 'siswa').replace(/[^a-zA-Z0-9]+/g,'_');
+    a.href = url; a.download = 'hasil_siklus2_' + safeName + '_absen' + record.absen + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){ console.warn('Auto-download gagal:', e); }
+}
+
+function loadAll(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; }
+}
+
+/* ---------- TEACHER PANEL ---------- */
+function openTeacher(){
+  const pass = prompt('Masukkan kode guru:');
+  if(pass !== 'guru13'){
+    if(pass !== null) alert('Kode salah.');
+    return;
+  }
+  renderTeacherTable();
+  show('scr-teacher');
+}
+function closeTeacher(){ show('scr-intro'); }
+function renderTeacherTable(){
+  const data = loadAll();
+  const tbody = document.querySelector('#teacher-table tbody');
+  tbody.innerHTML = data.map(d=>
+    '<tr><td>'+d.nama+'</td><td>'+d.absen+'</td><td>'+d.skor+'</td><td>'+d.predikat+'</td><td>'+d.waktu+'</td></tr>'
+  ).join('') || '<tr><td colspan="5" style="color:var(--text-dim)">Belum ada data.</td></tr>';
+}
+function downloadCSV(){
+  try{
+    const data = loadAll();
+    if(data.length===0){ alert('Belum ada data tersimpan di komputer ini. Gunakan file-file hasil_*.csv yang otomatis terunduh di layar akhir tiap siswa.'); return; }
+    const header = ['Nama','Absen','Skor','TotalHint','Predikat','HintTiket1_C2','HintTiket2_C3','HintTiket3_C4','HintTiket4_P3P4','UjiCobaTiket2','UjiCobaTiket3','UjiCobaTiket4','Waktu'];
+    const rows = data.map(d=>[d.nama,d.absen,d.skor,d.totalHint,d.predikat,d.d1_hint,d.d2_hint,d.d3_hint,d.d4_hint,d.d2_run,d.d3_run,d.d4_run,d.waktu]);
+    let csv = header.join(',') + '\n' + rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'rekap_gabungan_kurirkilat.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){ alert('Unduh rekap gabungan gagal di browser ini. Gunakan file-file hasil_*.csv individual sebagai gantinya.'); }
+}
+function clearData(){
+  if(confirm('Yakin hapus semua data hasil siswa di komputer ini? Tindakan ini tidak bisa dibatalkan.')){
+    localStorage.removeItem(STORAGE_KEY);
+    renderTeacherTable();
+  }
+}
+</script>
+</body>
+</html>
